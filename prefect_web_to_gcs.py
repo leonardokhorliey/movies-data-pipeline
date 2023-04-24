@@ -25,6 +25,7 @@ def fetch(dataset_url, output_path) -> pd.DataFrame:
 
 @task(log_prints=True)
 def read_df(file_name):
+    """Read CSV from local path"""
     df = pd.read_csv(f"ml-25m/{file_name}.csv")
 
     return df
@@ -32,6 +33,7 @@ def read_df(file_name):
 
 @task(name='movie_from_genre_separator', log_prints=True)
 def clean_movies_df(movies_df):
+    """Separates the genre data as a standalone dataframe from that of the full movies Dataframe"""
     movie_to_genre_df = movies_df[['movieId', 'genres']]
     movie_to_genre_df['genres'] = movie_to_genre_df['genres'].str.split('|')
 
@@ -43,16 +45,18 @@ def clean_movies_df(movies_df):
 
 @task(name='writing_to_local', log_prints=True)
 def write_to_local(df: pd.DataFrame, file_name):
+    """Writes Dataframe to local storage as parquet, to then export to Google Cloud storage.
+        Splits the very large datasets (`ratings` and `genome-scores`) into partitioned chunks, based on month and row indices.
+    """
     path = Path(f"data/pq/{file_name}")
-    
+    os.system("mkdir data/pq")
     file_names = []
-    if file_name in ['tags', 'ratings']:
-        os.system("mkdir data/pq")
+    if file_name in ['ratings']:
         os.system(f"mkdir {path}")
 
         df['year_month'] = df['timestamp'].apply(set_month_column)
         max_month_float = df['year_month'].max()
-        min_month_float = df['year_month'].min()
+        min_month_float = 201601
 
         while min_month_float <= max_month_float:
             
@@ -72,7 +76,6 @@ def write_to_local(df: pd.DataFrame, file_name):
         }
 
     elif file_name in ['genome-scores']:
-        os.system("mkdir data/pq")
         os.system(f"mkdir {path}")
         df_len = df.shape[0]
         counter = 1
@@ -98,6 +101,7 @@ def write_to_local(df: pd.DataFrame, file_name):
 
 @task(name='writing_to_gcs', log_prints=True)
 def write_to_gcs(path_dict: dict):
+    """Writes file to Google Cloud storage based on the path dictionary returned from `write_to_local`"""
     gcp_cloud_storage_bucket_block = GcsBucket.load("prefect-gcs")
     
     pth = path_dict["path"]
@@ -120,10 +124,11 @@ def write_to_gcs(path_dict: dict):
 
 
 @flow(name='read_movies_data')
-def do_transform():
+def do_transform(dataset_url, save_path):
+    """Main Flow Function that handles the ETL job for all the datasets"""
     dataset_url = 'https://files.grouplens.org/datasets/movielens/ml-25m.zip'
     save_path = 'data/dataset'
-    expected_data_files = ['movies']
+    expected_data_files = ['movies', 'ratings', 'genome-scores', 'genome-tags']
 
     fetch(dataset_url, f"{save_path}.zip")
 
@@ -145,7 +150,13 @@ def do_transform():
     return uploaded_to_gcs
 
 if __name__ == '__main__':
-    do_transform()
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument("-d", "--url", type= str, help="URL with file")
+    argParser.add_argument("-s", "--path", type= str, help="Path to save the file to")
+
+    args = argParser.parse_args()
+
+    do_transform(args.url, args.path)
 
 
 
