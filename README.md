@@ -94,7 +94,7 @@ More tips can be found directly on the [DE Zoomcamp Repo](https://github.com/Dat
 
 [Movie Lens Dashboard](https://lookerstudio.google.com/reporting/18660276-6a62-4e2b-b35e-f819ba2a7402)
 
-![](https://drive.google.com/file/d/1LnHk3PCcX50qIQKdVBZ5I9_iEIgzv-UV/view?usp=sharing "Dashboard")
+!["Viz"](https://drive.google.com/file/d/1LnHk3PCcX50qIQKdVBZ5I9_iEIgzv-UV/view "Dashboard")
 
 
 
